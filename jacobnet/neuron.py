@@ -1,8 +1,8 @@
 """Neuron class."""
 
 import numpy as np
-#import utils
-from jacobnet import utils
+import utils
+#from jacobnet import utils
 
 class Neuron():
     
@@ -57,8 +57,8 @@ class TestNeuron(unittest.TestCase):
         # check n_inputs, weights, bias set correctly
         self.assertEqual(self.neuron.n_inputs, self.n_inputs)
         
-        np.random.seed(42)
-        w = np.random.random(self.n_inputs)
+        np.random.seed(self.seed)
+        w = 1 - 2*np.random.random(self.n_inputs)
         self.assertSequenceEqual(list(self.neuron.weights), list(w))
         self.assertEqual(self.neuron.bias, 0)
         

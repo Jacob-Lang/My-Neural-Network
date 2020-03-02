@@ -1,10 +1,10 @@
 """Network class."""
 
 import numpy as np
-#import utils
-#import layer
-from jacobnet import utils
-from jacobnet import layer
+import utils
+import layer
+#from jacobnet import utils
+#from jacobnet import layer
 
 class Network:
     def __init__(self, input_size, layer_sizes, seed=None):
@@ -61,17 +61,39 @@ class Network:
             return a_store, z_store
     
     ## BACKPROPAGATION
-    def backpropagate(self, a_store, z_store):
-        # TO DO
-        # return layer_deltas
-        return 0
-    
+    def backpropagate(self, network_output, z_store, target_output):
+        """Backward propagation of the weighted input (z) errors"""
+        n_layers = len(z_store)
+        deltas = [0]*n_layers
         
-    def update_network(self, layer_deltas):
-        # TO DO
-        # update neuron weights and biases from layer_deltas
-        return 0
-    
+        # error of final layer
+        final_z = z_store[-1]
+        deltas[-1] = utils.cost_prime(target_output, network_output)*utils.sigmoid_prime(final_z)
+        
+        # error of preceding layers
+        for l in range(-2, -(n_layers+1),-1) :
+            # weight matrix for l + 1 layer
+            W = self.layers[l+1].weight_matrix()
+            deltas[l] = np.matmul(np.transpose(W), deltas[l+1])*z_store[l]
+        
+        return deltas
+
+        
+    def update_network(self, deltas, learning_rate, a_store, input_array):
+        a_store.append(input_array) # add to a_store so that a_store[-1] is input
+        for li, lyr in enumerate(self.layers):
+            dCdb = deltas[li]
+            step_b = - learning_rate*dCdb
+            
+            for ni, nrn in enumerate(lyr.neurons):
+                
+                nrn.bias += step_b[ni]
+                
+                dCdW = a_store[li - 1]*deltas[li][ni]
+                step_W = - learning_rate*dCdW
+
+                nrn.weights += step_W
+              
     
     
 #%% Testing 
@@ -83,7 +105,7 @@ class TestNetwork(unittest.TestCase):
     def setUp(self):
         # example parameters for test
         self.input_size = 10
-        self.layer_sizes = [20,40,20,2] # final layer must match output size. can test for this. in training.
+        self.layer_sizes = [20,40,20,5] # final layer must match output size. can test for this. in training.
         self.seed = 42
         
         # create instance of network
@@ -109,9 +131,9 @@ class TestNetwork(unittest.TestCase):
         
     def test_seed(self):
         # check weights of a particular neuron to check if seed works. 
-        w = list(self.network.layers[0].neurons[0].weights)
-        w_diff = list(self.network_diff.layers[0].neurons[0].weights)
-        w_same = list(self.network_same.layers[0].neurons[0].weights)
+        w = list(self.network.layers[-1].neurons[-1].weights)
+        w_diff = list(self.network_diff.layers[-1].neurons[-1].weights)
+        w_same = list(self.network_same.layers[-1].neurons[-1].weights)
         
         self.assertSequenceEqual(w, w_same)
         self.assertNotEqual(w, w_diff)
@@ -131,6 +153,41 @@ class TestNetwork(unittest.TestCase):
         # check activation related to weighted input correcclty. 
         self.assertEqual(list(utils.sigmoid(z_store[-1])), list(a_store[-1]))
     
+    def test_backpropagate(self):
+        # dummy input and output vectors
+        input_array = np.random.random(10)
+        target_output = np.random.random(5)
+        # feedforward
+        a_store, z_store = self.network.forward(input_array=input_array, mode='train')
+        # backpropagate
+        delta = self.network.backpropagate(a_store[-1], z_store, target_output)
+        # check backprop has reached first layer and is correct shape
+        self.assertIsInstance(delta[0], np.ndarray)
+        self.assertEqual(delta[0].shape, (self.network.layers[0].n_neurons,))
+        # check last layer too
+        self.assertIsInstance(delta[-1], np.ndarray)
+        self.assertEqual(delta[-1].shape, (self.network.layers[-1].n_neurons,))            
+        
+    def test_update_weights(self):
+        # dummy input and output vectors
+        input_array = self.input_array
+        target_output = np.random.random(5)
+        # feedforward
+        a_store, z_store = self.network.forward(input_array=input_array, mode='train')
+        # calculate cost
+        print(utils.cost(target_output, a_store[-1]))
+        # backpropagate
+        deltas = self.network.backpropagate(a_store[-1], z_store, target_output)
+        #
+        learning_rate = 0.01
+        self.network.update_network(deltas, learning_rate, a_store, input_array)
+        
+        # feedforward
+        a = self.network.forward(input_array=input_array, mode='test')
+        # calculate cost
+        print(utils.cost(target_output, a))
+    
+        
 
 if __name__ == '__main__':
     # run tests

@@ -1,10 +1,10 @@
 """Layer class."""
 
 import numpy as np
-#import utils
-#import neuron
-from jacobnet import utils
-from jacobnet import neuron
+import utils
+import neuron
+#from jacobnet import utils
+#from jacobnet import neuron
     
     
 class Layer:
@@ -22,6 +22,24 @@ class Layer:
         # layer is just a list of neurons
         self.neurons = [neuron.Neuron(n_inputs=self.n_inputs) for n in range(n_neurons)]
         
+    def weight_matrix(self):
+        """Returns the weight matrix for the layer"""
+        # has shape (n_neurons, n_inputs) so that W*a_n + b = z_n+1 
+        W = np.zeros((self.n_neurons, self.n_inputs))
+        # fill weight matrix by querying neurons
+        for ni, nrn in enumerate(self.neurons):
+            W[ni,:] = nrn.weights
+        
+        return W
+    
+    def bias_vector(self):
+        """Returns the bias vector for the layer"""
+        b = np.zeros((self.n_neurons,))
+        # fill bias vector by querying neurons
+        for ni, nrn in enumerate(self.neurons):
+            b[ni] = nrn.bias
+        
+        return b
     
     def forward(self, input_array):
         """Forward propagation of an array through the layer"""
@@ -69,14 +87,23 @@ class TestLayer(unittest.TestCase):
         
     def test_seed(self):
         # weights of a particular neuron
-        w = list(self.layer.neurons[0].weights)
-        w_diff = list(self.layer_diff.neurons[0].weights)
-        w_same = list(self.layer_same.neurons[0].weights)
+        w = list(self.layer.neurons[-1].weights)
+        w_diff = list(self.layer_diff.neurons[-1].weights)
+        w_same = list(self.layer_same.neurons[-1].weights)
 
         # check weights initialised the same when seed is set
         self.assertSequenceEqual(w, w_same)
         # check they are different when seed is not set
         self.assertNotEqual(w, w_diff)
+    
+    def test_weight_matrix(self):
+        W = self.layer.weight_matrix()
+        b = self.layer.bias_vector()
+        # check weight matrix is properly filled
+        z1 = np.matmul(W, self.test_input) + b
+        _, z2 = self.layer.forward(self.test_input)
+        
+        self.assertEqual(list(z1), list(z2))
 
     def test_forward(self):
         a_array, z_array = self.layer.forward(self.test_input)
