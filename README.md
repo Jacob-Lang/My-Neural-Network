@@ -6,3 +6,4 @@ I am including unit tests. I will eventually train the network on the mnist hand
 
 My Neural Network.ipynb contains demonstrations of the package in use. 
 The 'jacobnet' directory contains the package itself and 'tests' contains the unit tests. 
+To run the tests (requires unittest) from the My Neural Network directory: python -m unittest discover
