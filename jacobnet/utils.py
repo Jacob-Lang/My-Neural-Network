@@ -13,7 +13,7 @@ def sigmoid_prime(x):
     return sig_prime
 
 
-def cost(output_array, target):
+def cost(target, output_array):
         """Quadratic cost function"""
         C = 0.5*np.linalg.norm(target - output_array)**2
         return C
