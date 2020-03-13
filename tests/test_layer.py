@@ -1,71 +1,73 @@
-import unittest
+import pytest
 import numpy as np
 
 # for unittesting in spyder IDE. 
 import sys
 sys.path.append("../") 
 
-
 from jacobnet.layer import Layer
 from jacobnet import utils
     
-class TestLayer(unittest.TestCase):
-
-    def setUp(self):
-        # example parameters for test
-        self.n_neurons = 4
-        self.n_inputs = 3
-        self.seed = 42
-        self.layer = Layer(n_neurons=self.n_neurons, 
-                           n_inputs=self.n_inputs, 
-                           seed=self.seed)
-        
-        # two more layers to check reproducibility (to test the seed function)
-        self.layer_diff = Layer(n_neurons=self.n_neurons, 
-                           n_inputs=self.n_inputs, 
-                           seed=None)
-        
-        self.layer_same = Layer(n_neurons=self.n_neurons, 
-                           n_inputs=self.n_inputs, 
-                           seed=self.seed)
-        
-        # example input
-        self.test_input = np.ones(self.n_inputs)
-
-    def test_init(self):
-        # check layer object is constructed
-        self.assertIsInstance(self.layer, Layer)
-        
-    def test_seed(self):
-        # weights of a particular neuron
-        w = list(self.layer.neurons[-1].weights)
-        w_diff = list(self.layer_diff.neurons[-1].weights)
-        w_same = list(self.layer_same.neurons[-1].weights)
-
-        # check weights initialised the same when seed is set
-        self.assertSequenceEqual(w, w_same)
-        # check they are different when seed is not set
-        self.assertNotEqual(w, w_diff)
     
-    def test_weight_matrix(self):
-        W = self.layer.weight_matrix()
-        b = self.layer.bias_vector()
-        # check weight matrix is properly filled
-        z1 = np.matmul(W, self.test_input) + b
-        _, z2 = self.layer.forward(self.test_input)
-        
-        self.assertEqual(list(z1), list(z2))
+n_inputs = 3
+n_neurons = 4
 
-    def test_forward(self):
-        a_array, z_array = self.layer.forward(self.test_input)
-        
-        # check output is correct shape
-        self.assertEqual(a_array.shape, (self.n_neurons,))
-        self.assertEqual(z_array.shape, (self.n_neurons,))
+# create three layers (two with same seed, one with random seed = None)
+@pytest.fixture
+def layer_fixture():
+    seed = 42
+    return Layer(n_neurons=n_neurons, n_inputs=n_inputs, seed=seed)  
+ 
+@pytest.fixture
+def layer_fixture_diff():
+    seed = None
+    return Layer(n_neurons=n_neurons, n_inputs=n_inputs, seed=seed)  
 
-        # check output is numpy array
-        self.assertIsInstance(a_array, np.ndarray)
-        self.assertIsInstance(z_array, np.ndarray)
-        
-        # check outputs related as expected
-        self.assertSequenceEqual(list(utils.sigmoid(z_array)), list(a_array))
+@pytest.fixture
+def layer_fixture_same():
+    seed = 42
+    return Layer(n_neurons=n_neurons, n_inputs=n_inputs, seed=seed)  
+    
+# test Layer object has been created    
+def test_init(layer_fixture):
+    assert type(layer_fixture) == Layer
+
+# test random initialisation and reproducibility
+def test_seed(layer_fixture, layer_fixture_diff, layer_fixture_same):
+    # check two neurons in layer
+    n = np.random.randint(0, n_neurons)
+    m = n-1
+    # diff weights for diff seeds
+    assert (layer_fixture.neurons[n].weights != layer_fixture_diff.neurons[n].weights).all()
+    # same weights for same seeds
+    assert (layer_fixture.neurons[n].weights == layer_fixture_same.neurons[n].weights).all()
+    # diff weights for diff neurons
+    assert (layer_fixture.neurons[n].weights != layer_fixture.neurons[m].weights).all()
+
+# test weight matrix by setting all weights to one
+def test_weight_matrix(layer_fixture):
+    for nrn in layer_fixture.neurons:
+        nrn.weights = np.ones(n_inputs)
+    assert (layer_fixture.weight_matrix() == np.ones((n_neurons, n_inputs))).all()
+    
+# test bias vector by setting all biases to one
+def test_bias_vector(layer_fixture):
+    for nrn in layer_fixture.neurons:
+        nrn.bias = 1
+    assert (layer_fixture.bias_vector() == np.ones(n_neurons)).all()
+
+# test forward propagation by comparing with matrix multiplication. 
+def test_forward(layer_fixture):
+    # test input all ones
+    input_array = np.ones(n_inputs)
+    # propagate via forward function
+    a_array, z_array = layer_fixture.forward(input_array)
+    # propagate using weight matrix (and bias vector = 0)
+    W = layer_fixture.weight_matrix()
+    expected_z_array = np.matmul(W, input_array)
+    expected_a_array = utils.sigmoid(expected_z_array)
+    
+    assert (a_array == expected_a_array).all()
+    assert (z_array == expected_z_array).all()
+
+    

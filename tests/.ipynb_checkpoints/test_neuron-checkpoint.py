@@ -1,4 +1,4 @@
-import unittest
+import pytest
 import numpy as np
 
 # for unittesting in spyder IDE. 
@@ -7,57 +7,46 @@ sys.path.append("../")
 
 from jacobnet.neuron import Neuron
 from jacobnet import utils
+
+n_inputs = 3
+
+# create 3 neurons. Two with seed = 42, one with random seed=None
+@pytest.fixture
+def neuron_fixture():
+    seed = 42
+    return Neuron(n_inputs=n_inputs, seed=seed)
+
+@pytest.fixture
+def neuron_fixture_diff():
+    seed = None
+    return Neuron(n_inputs=n_inputs, seed=seed)
+
+@pytest.fixture
+def neuron_fixture_same():
+    seed = 42
+    return Neuron(n_inputs=n_inputs, seed=seed)
+
+# test weights and bias as expected
+def test_init(neuron_fixture):
+    seed = 42
+    np.random.seed(seed)
+    expected_weights = 1 - 2*np.random.random(n_inputs) 
+
+    assert (neuron_fixture.weights == expected_weights).all()
+    assert neuron_fixture.bias == 0
+
+# test reproducibility and random initialisation via seed. 
+def test_seed(neuron_fixture, neuron_fixture_same, neuron_fixture_diff):
+    assert (neuron_fixture.weights == neuron_fixture_same.weights).all()
+    assert (neuron_fixture.weights != neuron_fixture_diff.weights).all()
+
+# test forward propagation through neuron. 
+# for input = [1,1,1,...] and bias = 0 the weighted input z = sum(weights) and a = sigmoid(z).
+def test_forward(neuron_fixture):
+    input_array = np.ones(n_inputs)
+    a, z = neuron_fixture.forward(input_array)
+    assert z == sum(neuron_fixture.weights)
+    assert a == utils.sigmoid(z)
+
+
     
-class TestNeuron(unittest.TestCase):
-
-    def setUp(self):
-        # create instance
-        self.n_inputs = 3
-        self.seed = 42
-        self.neuron = Neuron(n_inputs=self.n_inputs, seed=self.seed)
-        
-        # to check random seed
-        self.neuron_diff = Neuron(n_inputs=self.n_inputs, seed=None)
-        self.neuron_same = Neuron(n_inputs=self.n_inputs, seed=self.seed)
-
-        # example input
-        self.input = np.ones(self.n_inputs)
-
-    def test_init(self):
-        # check neuron  object is constructed
-        self.assertIsInstance(self.neuron, Neuron)
-        # check n_inputs, weights, bias set correctly
-        self.assertEqual(self.neuron.n_inputs, self.n_inputs)
-        
-        np.random.seed(self.seed)
-        w = 1 - 2*np.random.random(self.n_inputs)
-        self.assertSequenceEqual(list(self.neuron.weights), list(w))
-        self.assertEqual(self.neuron.bias, 0)
-        
-    def test_seed(self):
-        # test reproducibility
-        w = list(self.neuron.weights)
-        w_diff = list(self.neuron_diff.weights)
-        w_same = list(self.neuron_same.weights)
-        # check weights initialised the same when seed is set
-        self.assertSequenceEqual(w, w_same)
-        # and differently when seed=None
-        self.assertNotEqual(w, w_diff)
-
-    def test_forward(self):
-        # test activation and weighted input.
-        # actual output when weights all set to 1
-        self.neuron.weights = np.ones(self.n_inputs)
-        a, z = self.neuron.forward(self.input)
-        
-        # for weights = 1, expected_z = sum(input) = n_inputs
-        expected_z = self.n_inputs
-        expected_a = utils.sigmoid(expected_z)
-    
-                
-        self.assertEqual(z, expected_z)
-        self.assertEqual(a, expected_a)
-
-
-#if __name__ == '__main__':
-#    unittest.main()
