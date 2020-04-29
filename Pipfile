@@ -10,6 +10,7 @@ jupyterlab = "*"
 numpy = "*"
 matplotlib = "*"
 pytest = "*"
+python-mnist = "*"
 
 [requires]
 python_version = "3.8"
